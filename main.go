@@ -35,16 +35,17 @@ func init() {
 //export fields to templates
 //fields changed to uppercase
 type Book struct {
-	Isbn   string
-	Title  string
-	Author string
-	Price  float32
+	Isbn        string
+	Title       string
+	Author      string
+	Price       float32
+	IsAvailable bool
 }
 
 func main() {
 	//add routes and servers
 	http.HandleFunc("/", index)
-	http.HandleFunc("/books", booksIndex)
+	http.HandleFunc("/books", libraryIndex)
 	http.HandleFunc("/books/show", booksShow)
 	http.HandleFunc("/books/create", booksCreateForm)
 	http.HandleFunc("/books/create/process", booksCreateProcess)
@@ -56,6 +57,40 @@ func main() {
 
 func index(responseWriter http.ResponseWriter, request *http.Request) {
 	http.Redirect(responseWriter, request, "/books", http.StatusSeeOther)
+}
+
+func libraryIndex(responseWriter http.ResponseWriter, request *http.Request) {
+	if request.Method != "GET" {
+		http.Error(responseWriter, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+	//Query the db
+	rows, err := db.Query("SELECT * FROM books")
+	if err != nil {
+		http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	books := make([]Book, 0)
+	//iterate through results, prepares the first and each tp be acted upon the scan method
+	for rows.Next() {
+		book := Book{}
+		//use Scan() to copy the values from each field in the row to a new book object created in line above
+		err := rows.Scan(&book.Isbn, &book.Title, &book.Author, &book.Price, &book.IsAvailable)
+		if err != nil {
+			http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		//if no error occurred add to the list of books
+		books = append(books, book)
+	}
+	//check if errors occurred in the iteration
+	err = rows.Err()
+	if err != nil {
+		http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	tpl.ExecuteTemplate(responseWriter, "library-books.gohtml", books)
 }
 
 func booksIndex(responseWriter http.ResponseWriter, request *http.Request) {
