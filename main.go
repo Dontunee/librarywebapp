@@ -164,7 +164,7 @@ func booksShow(responseWriter http.ResponseWriter, request *http.Request) {
 	row := db.QueryRow("SELECT * FROM books WHERE isbn =$1", isbn)
 
 	book := Book{}
-	err := row.Scan(&book.Isbn, &book.Title, &book.Author, &book.Price)
+	err := row.Scan(&book.Isbn, &book.Title, &book.Author, &book.Price, &book.IsAvailable)
 	switch {
 	case err == sql.ErrNoRows:
 		http.NotFound(responseWriter, request)
